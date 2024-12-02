@@ -5,7 +5,14 @@
 #include <stdlib.h>
 #include <inttypes.h>
 
-#define RROTATE(n, r) ((n << (32U - r)) | (n >> r))
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+
+#define RROTATE(n, r) (((n) << (32U - (r))) | ((n) >> (r)))
+
+#define UNPACK_U32_BE(arr, i) (((uint32_t)arr[i] << 24U)    | \
+                               ((uint32_t)arr[i+1U] << 16U) | \
+                               ((uint32_t)arr[i+2U] << 8U)  | \
+                               ((uint32_t)arr[i+3U] << 0U))
 
 static const uint32_t k[64U] = {
   0x428a2f98U, 0x71374491U, 0xb5c0fbcfU, 0xe9b5dba5U,
@@ -26,41 +33,33 @@ static const uint32_t k[64U] = {
   0x90befffaU, 0xa4506cebU, 0xbef9a3f7U, 0xc67178f2U
 };
 
-static uint32_t u8_arr_to_be_u32(const uint8_t u8_arr[4U])
-{
-  return ((uint32_t)u8_arr[0U] << 24U) |
-         ((uint32_t)u8_arr[1U] << 16U) |
-         ((uint32_t)u8_arr[2U] << 8U)  |
-         (uint32_t)u8_arr[3U];
-}
-
 static void sha256_process(struct sha256_ctx *ctx)
 {
   uint32_t w[64U] =
   {
-    [0U]  = u8_arr_to_be_u32(&ctx->chunk[0U]),
-    [1U]  = u8_arr_to_be_u32(&ctx->chunk[4U]),
-    [2U]  = u8_arr_to_be_u32(&ctx->chunk[8U]),
-    [3U]  = u8_arr_to_be_u32(&ctx->chunk[12U]),
-    [4U]  = u8_arr_to_be_u32(&ctx->chunk[16U]),
-    [5U]  = u8_arr_to_be_u32(&ctx->chunk[20U]),
-    [6U]  = u8_arr_to_be_u32(&ctx->chunk[24U]),
-    [7U]  = u8_arr_to_be_u32(&ctx->chunk[28U]),
-    [8U]  = u8_arr_to_be_u32(&ctx->chunk[32U]),
-    [9U]  = u8_arr_to_be_u32(&ctx->chunk[36U]),
-    [10U] = u8_arr_to_be_u32(&ctx->chunk[40U]),
-    [11U] = u8_arr_to_be_u32(&ctx->chunk[44U]),
-    [12U] = u8_arr_to_be_u32(&ctx->chunk[48U]),
-    [13U] = u8_arr_to_be_u32(&ctx->chunk[52U]),
-    [14U] = u8_arr_to_be_u32(&ctx->chunk[56U]),
-    [15U] = u8_arr_to_be_u32(&ctx->chunk[60U])
+    [0U]  = UNPACK_U32_BE(ctx->chunk, 0U),
+    [1U]  = UNPACK_U32_BE(ctx->chunk, 4U),
+    [2U]  = UNPACK_U32_BE(ctx->chunk, 8U),
+    [3U]  = UNPACK_U32_BE(ctx->chunk, 12U),
+    [4U]  = UNPACK_U32_BE(ctx->chunk, 16U),
+    [5U]  = UNPACK_U32_BE(ctx->chunk, 20U),
+    [6U]  = UNPACK_U32_BE(ctx->chunk, 24U),
+    [7U]  = UNPACK_U32_BE(ctx->chunk, 28U),
+    [8U]  = UNPACK_U32_BE(ctx->chunk, 32U),
+    [9U]  = UNPACK_U32_BE(ctx->chunk, 36U),
+    [10U] = UNPACK_U32_BE(ctx->chunk, 40U),
+    [11U] = UNPACK_U32_BE(ctx->chunk, 44U),
+    [12U] = UNPACK_U32_BE(ctx->chunk, 48U),
+    [13U] = UNPACK_U32_BE(ctx->chunk, 52U),
+    [14U] = UNPACK_U32_BE(ctx->chunk, 56U),
+    [15U] = UNPACK_U32_BE(ctx->chunk, 60U)
   };
 
   for (size_t i = 16U; i < 64U; i++)
   {
     uint32_t s0 = RROTATE(w[i-15U], 7U) ^ RROTATE(w[i-15U], 18U) ^ (w[i-15U] >> 3U);
     uint32_t s1 = RROTATE(w[i-2U], 17U) ^ RROTATE(w[i-2U], 19U)  ^ (w[i-2U] >> 10U);
-    w[i] = w[i-16U] + s0 + w[i-7U] + s1;
+    w[i]        = w[i-16U] + s0 + w[i-7U] + s1;
   }
 
   uint32_t a = ctx->h[0U];
@@ -74,21 +73,21 @@ static void sha256_process(struct sha256_ctx *ctx)
 
   for (size_t i = 0U; i < 64U; i++)
   {
-    uint32_t S1 = RROTATE(e, 6U) ^ RROTATE(e, 11U) ^ RROTATE(e, 25U);
-    uint32_t ch = (e & f) ^ ((~e) & g);
-    uint32_t temp1 = h + S1 + ch + k[i] + w[i];
-    uint32_t S0 = RROTATE(a, 2U) ^ RROTATE(a, 13U) ^ RROTATE(a, 22U);
-    uint32_t maj = (a & b) ^ (a & c) ^ (b & c);
-    uint32_t temp2 = (S0 + maj);
+    uint32_t S1     = RROTATE(e, 6U) ^ RROTATE(e, 11U) ^ RROTATE(e, 25U);
+    uint32_t ch     = (e & f) ^ ((~e) & g);
+    uint32_t temp1  = h + S1 + ch + k[i] + w[i];
+    uint32_t S0     = RROTATE(a, 2U) ^ RROTATE(a, 13U) ^ RROTATE(a, 22U);
+    uint32_t maj    = (a & b) ^ (a & c) ^ (b & c);
+    uint32_t temp2  = (S0 + maj);
 
     h = g;
     g = f;
     f = e;
-    e = (d + temp1);
+    e = d + temp1;
     d = c;
     c = b;
     b = a;
-    a = (temp1 + temp2);
+    a = temp1 + temp2;
   }
 
   ctx->h[0U] += a;
@@ -125,8 +124,7 @@ void sha256_feed(struct sha256_ctx *ctx, const uint8_t *data, size_t size)
 
   while (size > 0U)
   {
-    // Take the minimum of the remaining size and space left for a full chunk
-    len_to_add = (size < (64U - ctx->chunk_idx)) ? size : (64U - ctx->chunk_idx);
+    len_to_add = MIN(size, 64U - ctx->chunk_idx);
     memcpy(&ctx->chunk[ctx->chunk_idx], &data[data_idx], len_to_add);
 
     size -= len_to_add;
@@ -143,20 +141,9 @@ void sha256_feed(struct sha256_ctx *ctx, const uint8_t *data, size_t size)
 
 void sha256_finalize(struct sha256_ctx *ctx, uint32_t result[static 8U])
 {
-  // ctx->msg_len is modified by sha256_feed so save it
-  size_t msg_len = ctx->msg_len;
-  uint32_t K = 64U - ((msg_len + 1U + 8U) % 64U);
+  uint32_t K = 64U - ((ctx->msg_len + 1U + 8U) % 64U);
 
-  uint8_t padding = 0x80U;
-  sha256_feed(ctx, &padding, 1U);
-
-  padding = 0U;
-  for (size_t i = 0U; i < K; i++)
-  {
-    sha256_feed(ctx, &padding, 1U);
-  }
-
-  uint64_t data_bit_length = msg_len * 8U;
+  uint64_t data_bit_length = ctx->msg_len * 8U;
   uint8_t data_bit_length_be_bytes[8U] =
   {
     (data_bit_length >> 56U) & 0xFFU,
@@ -168,6 +155,15 @@ void sha256_finalize(struct sha256_ctx *ctx, uint32_t result[static 8U])
     (data_bit_length >> 8U) & 0xFFU,
     (data_bit_length >> 0U) & 0xFFU
   };
+
+  uint8_t padding = 0x80U;
+  sha256_feed(ctx, &padding, 1U);
+
+  padding = 0U;
+  for (size_t i = 0U; i < K; i++)
+  {
+    sha256_feed(ctx, &padding, 1U);
+  }
 
   sha256_feed(ctx, data_bit_length_be_bytes, sizeof data_bit_length_be_bytes);
 
