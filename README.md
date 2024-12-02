@@ -1,6 +1,6 @@
 # c-sha256
 
-Simple SHA256 library for C
+SHA256 library for C
 
 - Requires C99 or newer
 
